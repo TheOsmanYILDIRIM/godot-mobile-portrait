@@ -52,24 +52,32 @@ jobs:
           echo "Cloning Godot Engine $GODOT_TAG..."
           git clone --depth 1 --branch "$GODOT_TAG" https://github.com/godotengine/godot.git godot-src
 
-      - name: Embed Mobile Portrait GUI & Unlock Orientation
+      - name: Configure Clone App Identity & Unlock Orientation
         run: |
           cd godot-src
-          echo "=== 1. Unlocking Android Screen Orientation (Full Sensor) ==="
+          echo "=== 1. Setting Unique Package ID (Side-by-side Clone Mode) ==="
+          # Replace package/applicationId in Gradle scripts so it installs ALONGSIDE original Godot
+          find platform/android -name "build.gradle" -exec sed -i 's/org\.godotengine\.editor\.v4/org.godotengine.godot.portrait/g' {} +
+          find platform/android -name "build.gradle" -exec sed -i 's/org\.godotengine\.editor\.v3/org.godotengine.godot.portrait/g' {} +
+          find platform/android -name "build.gradle" -exec sed -i 's/applicationId "org.godotengine.editor"/applicationId "org.godotengine.godot.portrait"/g' {} +
+          find platform/android -name "build.gradle" -exec sed -i 's/applicationId "org.godotengine.godot"/applicationId "org.godotengine.godot.portrait"/g' {} +
+
+          echo "=== 2. Setting App Name to 'Godot Portrait' ==="
+          find platform/android -name "strings.xml" -exec sed -i 's/<string name="godot_editor_name">.*<\/string>/<string name="godot_editor_name">Godot Portrait<\/string>/g' {} +
+          find platform/android -name "strings.xml" -exec sed -i 's/<string name="godot_project_name">.*<\/string>/<string name="godot_project_name">Godot Portrait<\/string>/g' {} +
+
+          echo "=== 3. Unlocking Android Screen Orientation (Full Sensor) ==="
           find platform/android -name "AndroidManifest.xml" -exec sed -i 's/android:screenOrientation="[^"]*"/android:screenOrientation="fullSensor"/g' {} +
           find platform/android -type f \( -name "*.java" -o -name "*.kt" \) -exec sed -i 's/SCREEN_ORIENTATION_[A-Z_]*/SCREEN_ORIENTATION_FULL_SENSOR/g' {} +
 
-          echo "=== 2. Embedding Default Mobile Theme & Touch DPI Settings ==="
-          # Adjust default touch scale and gesture settings in editor_settings.cpp
+          echo "=== 4. Embedding Default Mobile Theme & Touch DPI Settings ==="
           if [ -f "editor/editor_settings.cpp" ]; then
             sed -i 's/_initial_set("interface\/touchscreen\/enable_pan_and_scale_gestures", false)/_initial_set("interface\/touchscreen\/enable_pan_and_scale_gestures", true)/g' editor/editor_settings.cpp || true
           fi
 
-          echo "=== 3. Embedding Mobile Dock Auto-Collapse for Portrait ==="
-          # Ensure side docks don't crowd portrait screen by default
-          if [ -f "editor/editor_node.cpp" ]; then
-            sed -i 's/dock_slot_active/dock_slot_active/g' editor/editor_node.cpp
-          fi
+          echo "=== Verification ==="
+          grep -rn "org.godotengine.godot.portrait" platform/android/ || true
+          grep -rn "Godot Portrait" platform/android/ || true
 
       - name: Compile Godot Engine Android Editor Library (arm64-v8a)
         run: |
@@ -91,6 +99,6 @@ jobs:
       - name: Upload Godot Mobile Portrait APK
         uses: actions/upload-artifact@v4
         with:
-          name: Godot4-Mobile-Portrait-Embedded-APK
+          name: Godot4-Mobile-Portrait-Clone-APK
           path: output_apk/*.apk
           retention-days: 30
