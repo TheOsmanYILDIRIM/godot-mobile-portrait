@@ -1,0 +1,26 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; but since it is all text it can be edited using any text editor.
+
+config_version=5
+
+[application]
+
+config/name="Godot 4 Mobile Portrait Editor"
+config/description="Dikey ekran ve mobil cihazlar icin optimize edilmis Godot 4 Editor Arayuzu ve Eklentisi"
+config/version="1.0.0"
+config/features=PackedStringArray("4.3", "4.4", "Forward Plus")
+
+[editor_plugins]
+
+enabled=PackedStringArray("res://addons/mobile_portrait_editor/plugin.cfg")
+
+[display]
+
+window/size/viewport_width=412
+window/size/viewport_height=915
+window/size/window_width_override=412
+window/size/window_height_override=915
+window/stretch/mode="canvas_items"
+window/stretch/aspect="expand"
+window/handheld/orientation=1

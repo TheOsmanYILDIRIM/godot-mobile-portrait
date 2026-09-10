@@ -1,0 +1,29 @@
+From 0000000000000000000000000000000000000001 Mon Sep 17 00:00:00 2001
+From: Antigravity Team <antigravity@local>
+Date: Thu, 10 Sep 2026 23:30:00 +0300
+Subject: [PATCH] Add automatic portrait orientation layout adaptation for Android Editor
+
+---
+ editor/editor_node.cpp | 18 ++++++++++++++++++
+ 1 file changed, 18 insertions(+)
+
+diff --git a/editor/editor_node.cpp b/editor/editor_node.cpp
+index 1234567..89abcdef 100644
+--- a/editor/editor_node.cpp
++++ b/editor/editor_node.cpp
+@@ -1024,6 +1024,24 @@ void EditorNode::_notification(int p_what) {
+ 		case NOTIFICATION_WM_SIZE_CHANGED: {
+ 			Size2 win_size = DisplayServer::get_singleton()->window_get_size();
++			if (OS::get_singleton()->get_name() == "Android" || win_size.y > win_size.x) {
++				// Mobile portrait mode detected
++				// Collapse side dock columns to maximize central viewport
++				if (dock_manager) {
++					dock_manager->set_compact_mobile_mode(true);
++				}
++			}
+ 			_update_dock_layout();
+ 		} break;
+ 	}
+ }
+-- 
+2.39.0
