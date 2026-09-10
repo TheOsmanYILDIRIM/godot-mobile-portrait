@@ -66,9 +66,8 @@ jobs:
           find platform/android -name "strings.xml" -exec sed -i 's/<string name="godot_editor_name">.*<\/string>/<string name="godot_editor_name">Godot Portrait<\/string>/g' {} +
           find platform/android -name "strings.xml" -exec sed -i 's/<string name="godot_project_name">.*<\/string>/<string name="godot_project_name">Godot Portrait<\/string>/g' {} +
 
-          echo "=== 3. Unlocking Android Screen Orientation (Full Sensor) ==="
+          echo "=== 3. Unlocking Android Screen Orientation (Full Sensor in Manifests ONLY) ==="
           find platform/android -name "AndroidManifest.xml" -exec sed -i 's/android:screenOrientation="[^"]*"/android:screenOrientation="fullSensor"/g' {} +
-          find platform/android -type f \( -name "*.java" -o -name "*.kt" \) -exec sed -i 's/SCREEN_ORIENTATION_[A-Z_]*/SCREEN_ORIENTATION_FULL_SENSOR/g' {} +
 
           echo "=== 4. Embedding Default Mobile Theme & Touch DPI Settings ==="
           if [ -f "editor/editor_settings.cpp" ]; then
@@ -78,6 +77,7 @@ jobs:
           echo "=== Verification ==="
           grep -rn "org.godotengine.godot.portrait" platform/android/ || true
           grep -rn "Godot Portrait" platform/android/ || true
+          grep -rn "screenOrientation" platform/android/ || true
 
       - name: Compile Godot Engine Android Editor Library (arm64-v8a)
         run: |
