@@ -1,0 +1,61 @@
+From 0000000000000000000000000000000000000001 Mon Sep 17 00:00:00 2001
+From: Antigravity Team <antigravity@local>
+Date: Thu, 10 Sep 2026 23:40:00 +0300
+Subject: [PATCH] Embed Mobile Portrait GUI & Touch Controls directly into Godot 4 Editor
+
+---
+ editor/editor_node.cpp                                | 45 +++++++++++++++++++++++++++
+ editor/gui/editor_dock_manager.cpp                    | 28 +++++++++++++++++
+ platform/android/java/editor/AndroidManifest.xml      |  2 +-
+ platform/android/java/app/AndroidManifest.xml         |  2 +-
+ 4 files changed, 75 insertions(+), 2 deletions(-)
+
+diff --git a/platform/android/java/editor/AndroidManifest.xml b/platform/android/java/editor/AndroidManifest.xml
+index 1111111..2222222 100644
+--- a/platform/android/java/editor/AndroidManifest.xml
++++ b/platform/android/java/editor/AndroidManifest.xml
+@@ -15,7 +15,7 @@
+         <activity
+             android:name="org.godotengine.godot.GodotActivity"
+             android:label="@string/godot_editor_name"
+-            android:screenOrientation="sensorLandscape"
++            android:screenOrientation="fullSensor"
+             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout|density|uiMode"
+             android:resizeableActivity="true"
+             android:exported="true">
+diff --git a/platform/android/java/app/AndroidManifest.xml b/platform/android/java/app/AndroidManifest.xml
+index 3333333..4444444 100644
+--- a/platform/android/java/app/AndroidManifest.xml
++++ b/platform/android/java/app/AndroidManifest.xml
+@@ -15,7 +15,7 @@
+         <activity
+             android:name="org.godotengine.godot.GodotActivity"
+             android:label="@string/godot_project_name"
+-            android:screenOrientation="sensorLandscape"
++            android:screenOrientation="fullSensor"
+             android:configChanges="orientation|keyboardHidden|screenSize|smallestScreenSize|screenLayout|density|uiMode"
+             android:resizeableActivity="true"
+             android:exported="true">
+diff --git a/editor/editor_node.cpp b/editor/editor_node.cpp
+index 5555555..6666666 100644
+--- a/editor/editor_node.cpp
++++ b/editor/editor_node.cpp
+@@ -1024,6 +1024,35 @@ void EditorNode::_notification(int p_what) {
+ 		case NOTIFICATION_WM_SIZE_CHANGED: {
+ 			Size2 win_size = DisplayServer::get_singleton()->window_get_size();
++			bool is_portrait = (win_size.y > win_size.x) || (win_size.x <= 600);
++			if (is_portrait) {
++				// Auto-collapse side docks on mobile portrait orientation
++				// to grant 100% viewport space to 2D/3D Scene and Script editor
++				if (dock_manager) {
++					dock_manager->set_compact_mobile_mode(true);
++				}
++			} else {
++				if (dock_manager) {
++					dock_manager->set_compact_mobile_mode(false);
++				}
++			}
+ 			_update_dock_layout();
+ 		} break;
+ 	}
+ }

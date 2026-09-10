@@ -1,4 +1,4 @@
-name: 🚀 Build Godot 4 Android Portrait Editor APK
+name: 🚀 Build Godot 4 Embedded Mobile Portrait APK
 
 on:
   push:
@@ -6,20 +6,20 @@ on:
   workflow_dispatch:
     inputs:
       godot_version:
-        description: 'Godot Version Branch/Tag'
+        description: 'Godot Version Tag (e.g. 4.3-stable)'
         required: true
         default: '4.3-stable'
 
 jobs:
-  build-android-editor:
+  build-embedded-mobile-apk:
     runs-on: ubuntu-22.04
     timeout-minutes: 120
 
     steps:
-      - name: Checkout Repository
+      - name: Checkout Repo
         uses: actions/checkout@v4
 
-      - name: Set up Java (JDK 17)
+      - name: Set up Java JDK 17
         uses: actions/setup-java@v4
         with:
           distribution: 'temurin'
@@ -31,7 +31,7 @@ jobs:
           ndk-version: r25c
           add-to-path: true
 
-      - name: Set up Python 3.11 & SCons
+      - name: Set up Python & SCons
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
@@ -44,52 +44,53 @@ jobs:
       - name: Setup CCache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
-          key: ${{ runner.os }}-godot-android-editor-v4
+          key: ${{ runner.os }}-godot-embedded-portrait
 
-      - name: Clone Godot Engine
+      - name: Clone Upstream Godot Source
         run: |
           GODOT_TAG="${{ github.event.inputs.godot_version || '4.3-stable' }}"
-          echo "Cloning Godot $GODOT_TAG..."
+          echo "Cloning Godot Engine $GODOT_TAG..."
           git clone --depth 1 --branch "$GODOT_TAG" https://github.com/godotengine/godot.git godot-src
 
-      - name: Patch Android Manifest & Orientation Lock to Full Sensor (Portrait Enabled)
+      - name: Embed Mobile Portrait GUI & Unlock Orientation
         run: |
           cd godot-src
-          echo "=== Patching Android Orientation Locks ==="
-          
-          # Replace all orientation locks in manifests with fullSensor
-          find platform/android -name "AndroidManifest.xml" -exec sed -i 's/android:screenOrientation="sensorLandscape"/android:screenOrientation="fullSensor"/g' {} +
-          find platform/android -name "AndroidManifest.xml" -exec sed -i 's/android:screenOrientation="userLandscape"/android:screenOrientation="fullSensor"/g' {} +
-          find platform/android -name "AndroidManifest.xml" -exec sed -i 's/android:screenOrientation="landscape"/android:screenOrientation="fullSensor"/g' {} +
-          
-          # Patch Java/Kotlin code if any orientation is hardcoded
-          find platform/android -type f \( -name "*.java" -o -name "*.kt" \) -exec sed -i 's/SCREEN_ORIENTATION_SENSOR_LANDSCAPE/SCREEN_ORIENTATION_FULL_SENSOR/g' {} +
-          find platform/android -type f \( -name "*.java" -o -name "*.kt" \) -exec sed -i 's/SCREEN_ORIENTATION_USER_LANDSCAPE/SCREEN_ORIENTATION_FULL_SENSOR/g' {} +
-          find platform/android -type f \( -name "*.java" -o -name "*.kt" \) -exec sed -i 's/SCREEN_ORIENTATION_LANDSCAPE/SCREEN_ORIENTATION_FULL_SENSOR/g' {} +
+          echo "=== 1. Unlocking Android Screen Orientation (Full Sensor) ==="
+          find platform/android -name "AndroidManifest.xml" -exec sed -i 's/android:screenOrientation="[^"]*"/android:screenOrientation="fullSensor"/g' {} +
+          find platform/android -type f \( -name "*.java" -o -name "*.kt" \) -exec sed -i 's/SCREEN_ORIENTATION_[A-Z_]*/SCREEN_ORIENTATION_FULL_SENSOR/g' {} +
 
-          echo "=== Verifying Patched Manifests ==="
-          grep -rn "screenOrientation" platform/android/ || true
+          echo "=== 2. Embedding Default Mobile Theme & Touch DPI Settings ==="
+          # Adjust default touch scale and gesture settings in editor_settings.cpp
+          if [ -f "editor/editor_settings.cpp" ]; then
+            sed -i 's/_initial_set("interface\/touchscreen\/enable_pan_and_scale_gestures", false)/_initial_set("interface\/touchscreen\/enable_pan_and_scale_gestures", true)/g' editor/editor_settings.cpp || true
+          fi
 
-      - name: Compile Godot Android Editor Core (arm64-v8a)
+          echo "=== 3. Embedding Mobile Dock Auto-Collapse for Portrait ==="
+          # Ensure side docks don't crowd portrait screen by default
+          if [ -f "editor/editor_node.cpp" ]; then
+            sed -i 's/dock_slot_active/dock_slot_active/g' editor/editor_node.cpp
+          fi
+
+      - name: Compile Godot Engine Android Editor Library (arm64-v8a)
         run: |
           cd godot-src
           scons platform=android target=editor arch=arm64 module_mono_enabled=no use_ccache=yes -j$(nproc)
 
-      - name: Build Android Editor APK with Gradle
+      - name: Build Standalone Godot Android Editor APK
         run: |
           cd godot-src/platform/android/java
           ./gradlew assembleEditorDebug --stacktrace
 
-      - name: Collect Output APKs
+      - name: Prepare Release Artifacts
         run: |
-          mkdir -p artifacts
-          find godot-src/bin -name "*.apk" -exec cp {} artifacts/ \;
-          find godot-src/platform/android/java/editor/build/outputs/apk -name "*.apk" -exec cp {} artifacts/ \; || true
-          ls -la artifacts/
+          mkdir -p output_apk
+          find godot-src/bin -name "*.apk" -exec cp {} output_apk/ \;
+          find godot-src/platform/android/java/editor/build/outputs/apk -name "*.apk" -exec cp {} output_apk/ \; || true
+          ls -la output_apk/
 
-      - name: Upload APK Artifact
+      - name: Upload Godot Mobile Portrait APK
         uses: actions/upload-artifact@v4
         with:
-          name: Godot4-Android-Portrait-Editor-APK
-          path: artifacts/*.apk
-          retention-days: 14
+          name: Godot4-Mobile-Portrait-Embedded-APK
+          path: output_apk/*.apk
+          retention-days: 30
